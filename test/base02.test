@@ -1,0 +1,198 @@
+-- Basic sanity checking.
+--
+.new t1.db
+CREATE COLLECTION c1;
+INSERT INTO c1 VALUE { x:true };
+
+.testcase 1
+SELECT 1  FROM c1 WHERE true;
+SELECT 2  FROM c1 WHERE 1.0;
+SELECT 3  FROM c1 WHERE 0.1;
+SELECT 4  FROM c1 WHERE -0.1;
+SELECT 5  FROM c1 WHERE {a:1};
+SELECT 6  FROM c1 WHERE [1];
+SELECT 7  FROM c1 WHERE "x";
+SELECT 8  FROM c1 WHERE "1";
+SELECT 9  FROM c1 WHERE "0";
+SELECT 10 FROM c1 WHERE "false";
+.result 1 2 3 4 5 6 7 8 9 10
+
+.testcase 2
+SELECT 1 FROM c1 WHERE false;
+SELECT 2 FROM c1 WHERE NULL;
+SELECT 3 FROM c1 WHERE 0.0;
+SELECT 4 FROM c1 WHERE "";
+.result
+
+.testcase 3
+SELECT true && true FROM c1;
+SELECT true && false FROM c1;
+SELECT false && true FROM c1;
+SELECT false && false FROM c1;
+SELECT "cat" && "dog" FROM c1;
+SELECT "" && "dog" FROM c1;
+.result true false false false "dog" "" 
+
+.testcase 4
+SELECT true || true FROM c1;
+SELECT true || false FROM c1;
+SELECT false || true FROM c1;
+SELECT false || false FROM c1;
+SELECT "cat" || "dog" FROM c1;
+SELECT "" || "dog" FROM c1;
+.result true true true false "cat" "dog"
+
+.testcase 5
+SELECT ! true  FROM c1;
+SELECT ! false FROM c1;
+SELECT ! "cat" FROM c1;
+SELECT ! "" FROM c1;
+.result false true false true
+
+.testcase 6
+SELECT 1 & 2               FROM c1;
+SELECT "5" & 4             FROM c1;
+.result 0 4
+
+.testcase 7
+SELECT 1 | 2               FROM c1;
+SELECT "5" | 4             FROM c1;
+.result 3 5
+
+.testcase 8
+SELECT  1  << 2            FROM c1;
+SELECT "5" << 4            FROM c1;
+.result 4 80
+
+.testcase 9
+SELECT  1  >> 2            FROM c1;
+SELECT "5" >> 4            FROM c1;
+.result 0 0
+
+.testcase 10
+SELECT  ~1                 FROM c1;
+SELECT  ~"5"               FROM c1;
+.result -2 -6
+
+.testcase 11
+SELECT 1 * 7 FROM c1;
+SELECT 45 * 4 FROM c1;
+SELECT 67 * 2 FROM c1;
+.result 7 180 134
+
+.testcase 12
+SELECT 1 % 7 FROM c1;
+SELECT 45 % 4 FROM c1;
+SELECT 67 % 2 FROM c1;
+.result 1 1 1
+
+.testcase 13
+SELECT 1 / 7 FROM c1;
+SELECT 45 / 4 FROM c1;
+SELECT 67 / 2 FROM c1;
+.result 0.1428571428571428 11.25 33.5
+
+.testcase 14
+SELECT 1 + 7 FROM c1;
+SELECT 45 + 4 FROM c1;
+SELECT 67 + 2 FROM c1;
+.result 8 49 69
+
+.testcase 15
+SELECT 1 - 7 FROM c1;
+SELECT 45 - 4 FROM c1;
+SELECT 67 - 2 FROM c1;
+.result -6 41 65
+
+.testcase 16
+SELECT 1.12;
+SELECT "hello world";
+SELECT ;
+SELECT { x: "value" };
+SELECT [1,4,9,16,25];
+SELECT null;
+SELECT true;
+SELECT false;
+.result 1.12 "hello world" null {"x":"value"} [1,4,9,16,25] null true false
+
+.testcase 17
+CREATE COLLECTION c2;
+INSERT INTO c2 VALUE { a:1, b:2, c:"d", d:3 };
+SELECT c2.a FROM c2;
+SELECT c2["b"] FROM c2;
+SELECT c2[c2.c] FROM c2;
+SELECT c2["e"] FROM c2;
+.result 1 2 3 null
+
+.testcase 18
+DELETE FROM c2;
+INSERT INTO c2 VALUE { x: [10,11,12,13,14,15,16] };
+SELECT c2.x[0]          FROM c2;
+SELECT c2.x["1"]        FROM c2;
+SELECT c2.x[2.01]       FROM c2;
+SELECT c2.x[c2.x[6]-13] FROM c2;
+SELECT c2.x[-1]         FROM c2;
+SELECT c2.x[7]          FROM c2;
+.result 10 11 null 13 null null
+
+.testcase 19
+DELETE FROM c2;
+INSERT INTO c2 VALUE { x: "abcdefg" };
+SELECT c2.x[0]       FROM c2;
+SELECT c2.x["1"]     FROM c2;
+SELECT c2.x[2.01]    FROM c2;
+SELECT c2.x[1+1+1]   FROM c2;
+SELECT c2.x[-1]      FROM c2;
+SELECT c2.x[7]       FROM c2;
+SELECT c2.x[0][0][0] FROM c2;
+.result "a" "b" null "d" null null "a"
+
+.testcase 20
+SELECT [];
+SELECT {};
+.result [] {}
+
+.testcase 21
+CREATE COLLECTION c3;
+INSERT INTO c3 VALUE { one: 1, two: 2 };
+SELECT x.one FROM c3 AS x;
+SELECT x.two FROM c3 AS x;
+.result 1 2
+
+.testcase 21
+SELECT c3.one FROM c3 AS x;
+.error ERROR no such object: c3
+
+.testcase 22
+SELECT x FROM c3 AS x;
+.result {"one":1,"two":2} 
+
+.testcase 22b
+SELECT c3 FROM c3 AS x;
+.error ERROR no such object: c3
+
+.testcase 23
+SELECT FROM (SELECT FROM c3) AS x;
+.result {"one":1,"two":2} 
+
+.testcase 24
+SELECT FROM (SELECT {one:c3.two, two:c3.one} FROM c3) AS x;
+.result {"one":2,"two":1} 
+
+.testcase 25
+SELECT x FROM (SELECT {one:c3.two, two:c3.one} FROM c3) AS x;
+.result {"one":2,"two":1} 
+
+.testcase 26
+SELECT x.one FROM (SELECT {one:c3.two, two:c3.one} FROM c3) AS x;
+SELECT x["one"] FROM (SELECT {one:c3.two, two:c3.one} FROM c3) AS x;
+.result 2 2
+
+.testcase 27
+SELECT c3 FROM (SELECT {one:c3.two, two:c3.one} FROM c3) AS x;
+.error ERROR no such object: c3
+
+.testcase 28
+SELECT xyz FROM (SELECT {one:c3.two, two:c3.one} FROM c3) AS x;
+.error ERROR no such object: xyz
+

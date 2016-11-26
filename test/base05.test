@@ -1,0 +1,150 @@
+-- Further warm body tests. The tests in this file focus on ORDER BY, GROUP BY
+-- and DISTINCT.
+
+.new t1.db
+
+CREATE COLLECTION c1;
+INSERT INTO c1 VALUE {i:13, z:"Grape"};
+INSERT INTO c1 VALUE {i:4, z:"Cherry"};
+INSERT INTO c1 VALUE {i:12, z:"Gooseberry"};
+INSERT INTO c1 VALUE {i:15, z:"Guava"};
+INSERT INTO c1 VALUE {i:17, z:"Huckleberry"};
+INSERT INTO c1 VALUE {i:3, z:"Cantaloupe"};
+INSERT INTO c1 VALUE {i:1, z:"Blackberry"};
+INSERT INTO c1 VALUE {i:5, z:"Clementine"};
+INSERT INTO c1 VALUE {i:10, z:"Eggplant"};
+INSERT INTO c1 VALUE {i:16, z:"Honeydew"};
+INSERT INTO c1 VALUE {i:6, z:"Currant"};
+INSERT INTO c1 VALUE {i:7, z:"Damson"};
+INSERT INTO c1 VALUE {i:9, z:"Duran"};
+INSERT INTO c1 VALUE {i:14, z:"Grapefruit"};
+INSERT INTO c1 VALUE {i:2, z:"Blueberry"};
+INSERT INTO c1 VALUE {i:8, z:"Date"};
+INSERT INTO c1 VALUE {i:11, z:"Fig"};
+
+.testcase 1
+SELECT c1.i FROM c1 ORDER BY c1.i;
+.result 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
+
+.testcase 2
+SELECT c1.i FROM c1 ORDER BY c1.z;
+.result 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
+
+.testcase 3
+SELECT c1.i FROM c1 ORDER BY c1;
+.result 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
+
+.testcase 4
+SELECT c1.i FROM c1 ORDER BY c1 DESC;
+.result 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1
+
+.testcase 5
+SELECT c1.i FROM c1 ORDER BY c1 DESC LIMIT 16 OFFSET 1;
+.result 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1
+
+.testcase 6
+SELECT c1.i FROM c1 ORDER BY c1 DESC LIMIT 3 OFFSET 3;
+.result 14 13 12
+
+.testcase 7
+SELECT c1.i FROM c1 ORDER BY c1 ASC LIMIT 3 OFFSET 3;
+.result 4 5 6
+
+.testcase 8
+SELECT c1.i FROM c1 LIMIT 3 OFFSET 3;
+.result 15 17 3
+
+.testcase 9
+SELECT length("hello world");
+SELECT length(11);
+SELECT length(true);
+SELECT length(false);
+SELECT length(null);
+.result 11 2 4 5 4
+
+.testcase 10
+SELECT xyz("hello world");
+.error ERROR no such function: xyz
+
+.testcase 11
+SELECT FROM c1 WHERE count(c1);
+.error ERROR illegal use of aggregate function: count
+
+.testcase 12
+SELECT count(c1) FROM c1;
+SELECT count(c1) FROM c1 WHERE c1.i < 10;
+.result 17 9
+
+.testcase 13
+SELECT {a: count(c1), b : c1} FROM c1;
+.result {"a":17,"b":{"i":13,"z":"Grape"}}
+
+.testcase 14
+SELECT count(c1) FROM c1, c1 AS b;
+SELECT count(c1) FROM c1, c1 AS b WHERE c1.i<3 && b.i<3;
+SELECT count(c1) FROM c1, c1 AS b WHERE c1.i==1;
+.result 289 4 17
+
+.testcase 15
+CREATE COLLECTION c2;
+INSERT INTO c2 VALUE { a:"a", b:1 };
+INSERT INTO c2 VALUE { a:"b", b:2 };
+INSERT INTO c2 VALUE { a:"c", b:1 };
+INSERT INTO c2 VALUE { a:"a", b:3 };
+INSERT INTO c2 VALUE { a:"b", b:1 };
+INSERT INTO c2 VALUE { a:"a", b:2 };
+SELECT {x:count(c2.b),y:c2.a} FROM c2 GROUP BY c2.a;
+.result {"x":3,"y":"a"} {"x":2,"y":"b"} {"x":1,"y":"c"}
+
+.testcase 16
+SELECT {x:count(c2.b),y:c2.a} FROM c2 GROUP BY c2.a ORDER BY count(c2.b) DESC;
+.result {"x":3,"y":"a"} {"x":2,"y":"b"} {"x":1,"y":"c"}
+
+.testcase 17
+SELECT {x:count(c2.b),y:c2.a} FROM c2 GROUP BY c2.a ORDER BY count(c2.b) ASC;
+.result {"x":1,"y":"c"} {"x":2,"y":"b"} {"x":3,"y":"a"} 
+
+.testcase 18
+SELECT {x:count(c2.b),y:c2.a} FROM c2 GROUP BY c2.a HAVING count(c2.b)>1;
+.result {"x":3,"y":"a"} {"x":2,"y":"b"} 
+
+.testcase 19
+SELECT DISTINCT c2.a FROM c2;
+.result "a" "b" "c"
+
+.testcase 20
+SELECT DISTINCT c2.a FROM c2 ORDER BY c2.a DESC;
+.result "c" "b" "a"
+
+
+
+-- Test the magneticness of max() and min().
+--
+CREATE COLLECTION c3;
+INSERT INTO c3 VALUE { a:2, z:"two" };
+INSERT INTO c3 VALUE { a:3, z:"three"};
+INSERT INTO c3 VALUE { a:7, z:"seven"};
+INSERT INTO c3 VALUE { a:5, z:"five"};
+INSERT INTO c3 VALUE { a:1, z:"one"};
+INSERT INTO c3 VALUE { a:4, z:"four"};
+INSERT INTO c3 VALUE { a:6, z:"six"};
+
+.testcase 21
+SELECT { max: max(c3.a), z: c3.z } FROM c3;
+.json {max:7, z:"seven"}
+
+.testcase 22
+SELECT { min: min(c3.a), z: c3.z } FROM c3;
+.json {min:1, z:"one"}
+
+.testcase 23
+SELECT { min: min(c3.a), z: c3.z } FROM c3 GROUP BY c3.a%2;
+.json {min:2, z:"two"} {min:1, z:"one"} 
+
+.testcase 24
+SELECT { max: max(c3.a), z: c3.z } FROM c3 GROUP BY c3.a%2;
+.json {max:6, z:"six"} {max:7, z:"seven"}
+
+
+
+

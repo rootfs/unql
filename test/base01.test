@@ -1,0 +1,93 @@
+-- Basic sanity checking.
+--
+.new t1.db
+.testcase 100
+CREATE COLLECTION abc;
+CREATE COLLECTION def;
+INSERT INTO abc VALUE { name:"abc" };
+INSERT INTO def VALUE { name:"def" };
+.result
+
+.testcase 110
+SELECT FROM abc;
+.result {"name":"abc"}
+
+.testcase 120
+SELECT FROM def;
+.result {"name":"def"}
+
+.testcase 125
+SELECT FROM abc UNION ALL SELECT FROM def;
+.result {"name":"abc"} {"name":"def"}
+
+.testcase 130
+SELECT { p:1, q:2 } FROM abc;
+.result {"p":1,"q":2}
+.testcase 131
+SELECT {p:1, q:2+3} FROM abc;
+.result {"p":1,"q":5}
+.testcase 132
+SELECT {p:1, q:{x:[1,2,3],y:11}} FROM abc;
+.result {"p":1,"q":{"x":[1,2,3],"y":11}}
+
+.testcase 140
+SELECT { x:abc.name, y:10 } FROM abc;
+.result {"x":"abc","y":10}
+.testcase 141
+SELECT { x:[abc.name,abc,abc.xyz], y:10 } FROM abc;
+.result {"x":["abc",{"name":"abc"},null],"y":10}
+
+.testcase 150
+SELECT FROM abc WHERE abc.name=="abc";
+.result {"name":"abc"}
+.testcase 151
+SELECT FROM abc WHERE abc.name=="xyz";
+.result
+
+.testcase 160
+DELETE FROM abc WHERE abc.name=="xyz";
+SELECT FROM abc;
+.result {"name":"abc"}
+.testcase 161
+DELETE FROM abc WHERE abc.name=="abc";
+SELECT FROM abc;
+.result
+.testcase 162
+INSERT INTO abc VALUE {a:1, b:2, c:3};
+INSERT INTO abc VALUE {a:4, b:5, c:6};
+INSERT INTO abc VALUE {a:7, x:99, z:100};
+DELETE FROM abc WHERE abc.b==5;
+SELECT FROM abc;
+.result {"a":1,"b":2,"c":3} {"a":7,"x":99,"z":100}
+
+
+.testcase 170
+CREATE COLLECTION counter;
+UPDATE counter SET counter.n=counter.n+1 WHERE counter.name=="xyz";
+SELECT FROM counter;
+.result
+.testcase 171
+UPDATE counter SET counter.n=counter.n+1 WHERE counter.name=="xyz"
+  ELSE INSERT {name:"xyz", n:1};
+SELECT FROM counter;
+.result {"name":"xyz","n":1}
+.testcase 172
+UPDATE counter SET counter.n=counter.n+1 WHERE counter.name=="xyz"
+  ELSE INSERT {name:"xyz", n:1};
+SELECT FROM counter;
+.result {"name":"xyz","n":2}
+.testcase 173
+INSERT INTO counter VALUE {name:"pqr", n:0};
+UPDATE counter SET counter.n=counter.n+1 WHERE counter.name=="xyz"
+  ELSE INSERT {name:"xyz", n:1};
+SELECT FROM counter;
+.result {"name":"xyz","n":3} {"name":"pqr","n":0}
+
+.testcase 180
+UPDATE counter SET counter.ctime=1234 WHERE counter.name=="xyz";
+SELECT FROM counter WHERE counter.name=="xyz";
+.result {"name":"xyz","n":3,"ctime":1234}
+.testcase 181
+UPDATE counter SET counter.ctime.x.y="This is a test" WHERE counter.name=="xyz";
+SELECT FROM counter WHERE counter.name=="xyz";
+.result {"name":"xyz","n":3,"ctime":{"x":{"y":"This is a test"}}}
